@@ -8,7 +8,7 @@ import Sound from 'react-sound';
 import Button from './Button';
 
 // Not secure, but you can only read my library with this token
-const apiToken = `BQAqRaOriEd_SMYMWX-yodxfbYatkAj4tU8Fgfi9K9czfqt6N4N-irOtx2d-FxaQNzXZxpv4Xki2hxAe7C8MmUonrYShs-_cTiENxp7bWlFwQa9gCgc2tdBGzPsaCU9ShgBeFuSeAEIn_YjgTvKf0pkt`;
+const apiToken = `BQBo-m4KHdW1MbQOyMew3tCbWTi0A7fSKz0-Gq7noouY4vu_6pj1sVPvyqsVjplT96YeoNoX2MJKyx_VGa_lXRU0l9ABuZ0tmS-JqpfPskA3eibfz0q6KXpgcOfDEEj_f_XP4WY62sqg4g9V-hbSO2Z6`;
 const nb_song = 3;
 const base_url = `https://api.spotify.com/v1/me/tracks`;
 const timeout_ms = 30000
