@@ -97,7 +97,7 @@ class App extends Component {
   }
 
   async fetchOneSong(n) {
-    const track = await fetch(`${base_url}?limit=1&offset=${n}`, {
+    return fetch(`${base_url}?limit=1&offset=${n}`, {
       method: 'GET',
       headers: {
         Authorization: 'Bearer ' + apiToken,
@@ -105,8 +105,7 @@ class App extends Component {
     })
       .then(response => response.json()).then(res => res.items[0].track)
 
-
-    return track.preview_url ? track :this.fetchOneSong(n)
+    
     
   }
 
@@ -147,10 +146,17 @@ class App extends Component {
 
   async setRandomTracksFromAll(len_playlist) {
 
+    console.log("Fetching new tracks")
+
     const tracks = []
     for (let i = 0; i < nb_song; i++) {
-      const track = await this.fetchOneSong(getRandomNumber(len_playlist))
+      let track;
+      do {
+        track = await this.fetchOneSong(getRandomNumber(len_playlist))
+      } while (!track.preview_url)
+      
       tracks.push(track)
+      console.log(`Got track ${i+1} out of ${nb_song}`)
     }
 
     this.setState({
