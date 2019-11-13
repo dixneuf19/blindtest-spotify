@@ -8,8 +8,10 @@ import Sound from 'react-sound';
 import Button from './Button';
 
 // Not secure, but you can only read my library with this token
-const apiToken = `BQAZgmJvGImzoBL6E1_Hl43Oi91pLzGRwi1h5RIiby2T_1CgGCqg_yj-E4w2Ce4A-njFLzh11X71BM_fSA_ZcCAH1hrel9b0MQ5t9oWdr9Pf-td4XdN32rD6Vr2HL-_qL5znjHaoOkLSUi7Htau3taah`;
+const apiToken = `BQAqRaOriEd_SMYMWX-yodxfbYatkAj4tU8Fgfi9K9czfqt6N4N-irOtx2d-FxaQNzXZxpv4Xki2hxAe7C8MmUonrYShs-_cTiENxp7bWlFwQa9gCgc2tdBGzPsaCU9ShgBeFuSeAEIn_YjgTvKf0pkt`;
 const nb_song = 3;
+const base_url = `https://api.spotify.com/v1/me/tracks`;
+const timeout_ms = 30000
 
 function shuffleArray(array) {
   let counter = array.length;
@@ -94,8 +96,19 @@ class App extends Component {
       }
   }
 
+  async fetchOneSong(n) {
+    return await fetch(`${base_url}?limit=1&offset=${n}`, {
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer ' + apiToken,
+      },
+    })
+      .then(response => response.json()).then(res => res.items[0].track)
+
+  }
+
   async fetchNewSongs() {
-     return await fetch('https://api.spotify.com/v1/me/tracks', {
+     return await fetch(base_url, {
       method: 'GET',
       headers: {
         Authorization: 'Bearer ' + apiToken,
@@ -109,8 +122,9 @@ class App extends Component {
     return shuffleArray(res.items.map(e => e.track)).filter((_, i) => i < max) 
   }
 
-  resetGame() {
-    this.setNewRandomTracks()
+  async resetGame(state) {
+    await swal("Too long !", `It was ${this.state.currentTrack.name} by ${this.state.currentTrack.artists[0].name}`, "warning")
+    await this.setRandomTracksFromAll(state.res.total)
   }
 
   setNewRandomTracks() {
@@ -119,8 +133,24 @@ class App extends Component {
     this.setState({
       currentTrack: tracks[getRandomNumber(nb_song)],
       tracks,
-      timeout: setTimeout(this.reset, 1000)
+      timeout: setTimeout(this.resetGame, timeout_ms)
     })
+  }
+ 
+  async setRandomTracksFromAll(len_playlist) {
+    
+    const tracks = []
+    for (let i = 0; i < nb_song ; i++) {
+      const track = await this.fetchOneSong(getRandomNumber(len_playlist))
+      tracks.push(track)
+    }
+
+    this.setState({
+      currentTrack: tracks[getRandomNumber(nb_song)],
+      tracks,
+      timeout: setTimeout(() => this.resetGame(this.state), timeout_ms)
+    })
+
   }
 
   async componentDidMount() {
@@ -131,12 +161,12 @@ class App extends Component {
       res
     })
 
-    this.setNewRandomTracks()
+    this.setRandomTracksFromAll(this.state.res.total)
 
     this.setState({
       songsLoaded: true,
       text:
-        `Your library has ${res.total} songs ! Here I've got ${res.items.length} songs loaded.`,
+        `Your library has ${res.total} songs !`,
       
     })
 
