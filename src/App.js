@@ -8,7 +8,7 @@ import Sound from 'react-sound';
 import Button from './Button';
 
 // Not secure, but you can only read my library with this token
-const apiToken = `BQBo-m4KHdW1MbQOyMew3tCbWTi0A7fSKz0-Gq7noouY4vu_6pj1sVPvyqsVjplT96YeoNoX2MJKyx_VGa_lXRU0l9ABuZ0tmS-JqpfPskA3eibfz0q6KXpgcOfDEEj_f_XP4WY62sqg4g9V-hbSO2Z6`;
+const apiToken = `BQBdilD6dG9JGmNA3ocebjEM_cqlP8fYU4j528o3HbZk_NXq5hw7IbW6mn_yBxXU-A3jdZW2YOvZ6AjxXnZBPTOcMkhpg5FHTCNX6t9NsAmMwJz3Y4SopoJj5dCAwxXtx75TCSO-t8bK0Xnu69NWzEJ0`;
 const nb_song = 3;
 const base_url = `https://api.spotify.com/v1/me/tracks`;
 const timeout_ms = 30000
@@ -79,10 +79,14 @@ class App extends Component {
     super();
     this.state = {
       text: "",
+      libraryFetched: false,
       songsLoaded: false,
       currentTrack: {},
       tracks: [],
-      timeout: {}
+      timeout: {},
+      apiToken,
+      invalidToken: false,
+      error: ""
     }
   }
 
@@ -97,23 +101,28 @@ class App extends Component {
   }
 
   async fetchOneSong(n) {
-    return fetch(`${base_url}?limit=1&offset=${n}`, {
+    const res = await fetch(`${base_url}?limit=1&offset=${n}`, {
       method: 'GET',
       headers: {
-        Authorization: 'Bearer ' + apiToken,
+        Authorization: 'Bearer ' + this.state.apiToken,
       },
     })
-      .then(response => response.json()).then(res => res.items[0].track)
+      .then(response => response.json())
+      if (res.items) {
+        return res.items[0].track
+      } else {
+        throw new Error(res.error ? `error ${res.error.status}: ${res.error.message}` : "unknown error")
+      }
 
-    
-    
+
+
   }
 
   async fetchNewSongs() {
     return await fetch(base_url, {
       method: 'GET',
       headers: {
-        Authorization: 'Bearer ' + apiToken,
+        Authorization: 'Bearer ' + this.state.apiToken,
       },
     })
       .then(response => response.json())
@@ -130,8 +139,21 @@ class App extends Component {
   }
 
   async resetGame() {
-    console.log(`new songs with ${this.state.res.total}`)
-    await this.setRandomTracksFromAll(this.state.res.total)
+    this.setState({
+      songsLoaded: false
+    })
+    try {
+      await this.setRandomTracksFromAll(this.state.res.total)
+      this.setState({
+        invalidToken: false
+      })
+    } catch (e) {
+      console.log(e);
+      this.setState({
+        invalidToken: true,
+        error: e.message
+      })
+    }
   }
 
   setNewRandomTracks() {
@@ -154,66 +176,114 @@ class App extends Component {
       do {
         track = await this.fetchOneSong(getRandomNumber(len_playlist))
       } while (!track.preview_url)
-      
+
       tracks.push(track)
-      console.log(`Got track ${i+1} out of ${nb_song}`)
+      console.log(`Got track ${i + 1} out of ${nb_song}`)
     }
 
     this.setState({
       currentTrack: tracks[getRandomNumber(nb_song)],
       tracks,
-      timeout: setTimeout(() => this.resetGame(this.state), timeout_ms)
+      timeout: setTimeout(() => this.resetGame(this.state), timeout_ms),
+      songsLoaded: true,
     })
 
+  }
+
+  handleSubmit(event) {
+    event.preventDefault();
+    this.setState({
+      apiToken: event.target.api_token.value,
+      libraryFetched: false,
+      songsLoaded: false,
+    })
+    this.componentDidMount()
   }
 
   async componentDidMount() {
 
     const res = await this.fetchNewSongs();
 
-    this.setState({
-      res
-    })
-
-    this.setRandomTracksFromAll(this.state.res.total)
-
-    this.setState({
-      songsLoaded: true,
-      text:
-        `Your library has ${res.total} songs !`,
-
-    })
-
-    console.log(this.state)
+    if (res.error && res.error.status === 401) {
+      this.setState({
+        invalidToken: true,
+      })
+    } else {
+      this.setState({
+        invalidToken: false,
+        res,
+        libraryFetched: true,
+        text:
+          `Your library has ${res.total} songs !`,
+      })
+  
+      await this.resetGame()
+      console.log(this.state)
+    }
   }
 
   render() {
+    const token_input = (
+      <form onSubmit={(event) => this.handleSubmit(event)} id="token_form">
+        <span><a href="https://developer.spotify.com/console/get-current-user-saved-tracks/">Spotify API token</a> : </span>
+    <input type="text" id="api_token" name="api_token" placeholder={this.state.apiToken}></input>
+        <button type="submit" value="Submit">OK</button>
+      </form>)
+    const app_control = (<div className="App-images">
+
+      <div>
+
+        <p>{this.state.text}</p>
+        <Button onClick={() => this.resetGame()}>New songs</Button>
+      </div>
+    </div>)
+    const loading_element = (<img src={loading} className="App-loading" alt="loading" />)
+    const app_button = (
+      <div className="App-buttons">
+        {
+          this.state.tracks.map((track, i) => {
+            return <Button onClick={() => this.checkAnswer(track.id)} key={i}>
+              <Track track={track} sound={track.id === this.state.currentTrack.id} />
+              {/* <b>{track.name}</b> by <i>{track.artists[0].name}</i> */}
+            </Button>
+          })
+        }
+      </div>)
+    const app_loaded = (<div>
+      {app_control}
+      {app_button}
+    </div>)
     return (
       <div className="App">
         <header className="App-header">
           <img src={logo} className="App-logo" alt="logo" />
           <h1 className="App-title">Bienvenue sur le Blindtest</h1>
         </header>
-        <div className="App-images">
-          {this.state.songsLoaded ?
+        <main>
+          {token_input}
+
+          {this.state.invalidToken ? (<div><h3>Invalid Spotify API Token</h3><p>{this.state.error}</p></div>): 
+          (this.state.libraryFetched ? (
             <div>
-              <p>{this.state.text}</p>
-              <Button onClick={() => this.setNewRandomTracks()}>New songs</Button>
-
-            </div> :
-            <img src={loading} className="App-loading" alt="loading" />}
-
-        </div>
-        <div className="App-buttons">
-          {
-            this.state.tracks.map((track, i) => {
-              return <Button onClick={() => this.checkAnswer(track.id)} key={i}>
-                <Track track={track} sound={track.id === this.state.currentTrack.id} />
-                {/* <b>{track.name}</b> by <i>{track.artists[0].name}</i> */}
-              </Button>
-            })
+              <div>
+                {app_control}
+              </div>
+              <div>
+                {this.state.songsLoaded ?
+                  app_button :
+                  loading_element}
+              </div>
+            </div>
+          ) :
+            loading_element)
           }
-        </div>
+          <div>
+            <p>
+              Hi this is a blind test from the music of <b>your Spotify</b> music Library. Get a Spotify API Token from the link, and paste it above.
+            </p>
+          </div>
+        </main>
+
       </div>
     );
   }
