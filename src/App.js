@@ -46,9 +46,9 @@ class Track extends Component {
         <div><div>
           <b>{this.props.track.name}</b> by <b>{this.props.track.artists[0].name}</b>
         </div>
-        <div>
-        {this.props.sound ? <Sound url={this.props.track.preview_url} playStatus={Sound.status.PLAYING}/> : <div></div>}
-        </div>
+          <div>
+            {this.props.sound ? <Sound url={this.props.track.preview_url} playStatus={Sound.status.PLAYING} /> : <div></div>}
+          </div>
           <div>
             <AlbumCover images={this.props.track.album.images} />
           </div>
@@ -87,17 +87,17 @@ class App extends Component {
   }
 
   async checkAnswer(id) {
-      if (id === this.state.currentTrack.id) {
-        clearTimeout(this.state.timeout)
-        await swal("Bravo", `It was ${this.state.currentTrack.name} by ${this.state.currentTrack.artists[0].name}`, "succes")
-        this.setNewRandomTracks();
-      } else {
-        swal("Nope.", `It was ${this.state.currentTrack.name} by ${this.state.currentTrack.artists[0].name}`, "warning")
-      }
+    if (id === this.state.currentTrack.id) {
+      clearTimeout(this.state.timeout)
+      await swal("Bravo", `It was ${this.state.currentTrack.name} by ${this.state.currentTrack.artists[0].name}`, "succes")
+      await this.resetGame();
+    } else {
+      swal("Nope.", `It was ${this.state.currentTrack.name} by ${this.state.currentTrack.artists[0].name}`, "warning")
+    }
   }
 
   async fetchOneSong(n) {
-    return await fetch(`${base_url}?limit=1&offset=${n}`, {
+    const track = await fetch(`${base_url}?limit=1&offset=${n}`, {
       method: 'GET',
       headers: {
         Authorization: 'Bearer ' + apiToken,
@@ -105,10 +105,13 @@ class App extends Component {
     })
       .then(response => response.json()).then(res => res.items[0].track)
 
+
+    return track.preview_url ? track :this.fetchOneSong(n)
+    
   }
 
   async fetchNewSongs() {
-     return await fetch(base_url, {
+    return await fetch(base_url, {
       method: 'GET',
       headers: {
         Authorization: 'Bearer ' + apiToken,
@@ -119,12 +122,17 @@ class App extends Component {
   }
 
   getShuffledTracks(res, max) {
-    return shuffleArray(res.items.map(e => e.track)).filter((_, i) => i < max) 
+    return shuffleArray(res.items.map(e => e.track)).filter((_, i) => i < max)
   }
 
-  async resetGame(state) {
+  async timeout(state) {
     await swal("Too long !", `It was ${this.state.currentTrack.name} by ${this.state.currentTrack.artists[0].name}`, "warning")
-    await this.setRandomTracksFromAll(state.res.total)
+    this.resetGame()
+  }
+
+  async resetGame() {
+    console.log(`new songs with ${this.state.res.total}`)
+    await this.setRandomTracksFromAll(this.state.res.total)
   }
 
   setNewRandomTracks() {
@@ -133,14 +141,14 @@ class App extends Component {
     this.setState({
       currentTrack: tracks[getRandomNumber(nb_song)],
       tracks,
-      timeout: setTimeout(this.resetGame, timeout_ms)
+      timeout: setTimeout(() => this.resetGame(this.state), timeout_ms)
     })
   }
- 
+
   async setRandomTracksFromAll(len_playlist) {
-    
+
     const tracks = []
-    for (let i = 0; i < nb_song ; i++) {
+    for (let i = 0; i < nb_song; i++) {
       const track = await this.fetchOneSong(getRandomNumber(len_playlist))
       tracks.push(track)
     }
@@ -167,7 +175,7 @@ class App extends Component {
       songsLoaded: true,
       text:
         `Your library has ${res.total} songs !`,
-      
+
     })
 
     console.log(this.state)
@@ -185,7 +193,7 @@ class App extends Component {
             <div>
               <p>{this.state.text}</p>
               <Button onClick={() => this.setNewRandomTracks()}>New songs</Button>
-              
+
             </div> :
             <img src={loading} className="App-loading" alt="loading" />}
 
@@ -194,9 +202,9 @@ class App extends Component {
           {
             this.state.tracks.map((track, i) => {
               return <Button onClick={() => this.checkAnswer(track.id)} key={i}>
-                <Track track={track} sound={track.id === this.state.currentTrack.id}/>
+                <Track track={track} sound={track.id === this.state.currentTrack.id} />
                 {/* <b>{track.name}</b> by <i>{track.artists[0].name}</i> */}
-                </Button>
+              </Button>
             })
           }
         </div>
