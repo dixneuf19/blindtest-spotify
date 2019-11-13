@@ -1,0 +1,3 @@
+class AlbumCover extends Component {
+    
+}
